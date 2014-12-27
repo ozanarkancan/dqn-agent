@@ -32,7 +32,7 @@ if __name__== "__main__":
 	agent = Agent(w,h)
 	p.stdin.write("1,0,0,1\n")#screen and episode information
 	total_reward = 0
-	cv2.namedWindow("screen", cv2.WINDOW_NORMAL)
+	#cv2.namedWindow("screen", cv2.WINDOW_NORMAL)
 	for line in iter(p.stdout.readline, b''):
 		envinfo = line.strip()[:-1].split(":")
 		terminal, reward = map(int, envinfo[1].split(","))
