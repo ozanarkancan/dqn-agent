@@ -25,7 +25,10 @@ def preprocess(img):
         return img_down.reshape(np.size(img_down),1)
 
 if __name__== "__main__":
-	ale = "/home/atilberk/Desktop/FALL2014/COMP408/Project/ale_0.4.4/ale_0_4/"
+	if len(sys.argv) > 1:
+		ale = sys.argv[1]
+	else:
+		ale = "/home/atilberk/Desktop/FALL2014/COMP408/Project/ale_0.4.4/ale_0_4/"
 
 	agent = QNet(21*16*4,18,64)
 
@@ -52,4 +55,5 @@ if __name__== "__main__":
                         agent.train(state, previous_action, total_reward, terminal)
                         action = agent.get_action(state)
                         previous_action = action
-                        p.stdin.write(str(action) + ",18\n")	
+                        p.stdin.write(str(action) + ",18\n")
+		p.kill()	
