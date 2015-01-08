@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 import scipy.ndimage
 from scipy.misc import imresize
-import cv2
+#import cv2
 import theano
 from random import uniform, randint
 from nn import *
@@ -47,7 +47,7 @@ class DQNAgent(object):
 
 		#q_vals = self.net.compute_q(states[:32, :,:].reshape(32, 84 * 84))
 		q_vals = self.net.compute_q(batch.reshape(32, 4 * 84 * 84))
-		print q_vals
+		#print q_vals
 		for i in xrange(self.batch_size):
 			if terminals[i]:
 				y[i][action[i]] = rewards[i]
@@ -58,10 +58,10 @@ class DQNAgent(object):
 		self.net.train_x.set_value(batch.reshape(32, 4 * 84 * 84))
 		self.net.train_y.set_value(y)
 
-		for epoch in range(1,16):
+		for epoch in range(1,11):
 			#loss = self.net.train_net(states[:32, :, :].reshape(32, 84 * 84), y)
 			loss = self.net.train_net()
-			print "Epoch: %i Loss: %f" % (epoch,loss)
+			#print "Epoch: %i Loss: %f" % (epoch,loss)
 
 def get_screen_image(stream, w, h):
 	img = np.array([], dtype=theano.config.floatX)
