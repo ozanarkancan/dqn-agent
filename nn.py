@@ -12,13 +12,13 @@ class LogisticRegression(object):
 		self.W = theano.shared(
 			value=np.zeros(
 				(n_in, n_out), dtype=theano.config.floatX
-			), name='W', borrow=True
+			), borrow=True
 		)
 		
 		self.b = theano.shared(
 			value=np.zeros(
 				(n_out,), dtype=theano.config.floatX
-			), name='b', borrow=True
+			), borrow=True
 		)
 
 		self.p_y_given_x = T.nnet.softmax(T.dot(input, self.W) + self.b)
@@ -45,11 +45,11 @@ class Layer(object):
 
 			if activation_type == 'sigmoid':
 				W_values *= 4
-			W = theano.shared(value=W_values, name='W', borrow=True)
+			W = theano.shared(value=W_values, borrow=True)
 		
 		if b is None:
 			b_values = np.zeros((n_out, ),dtype=theano.config.floatX)
-			b = theano.shared(value=b_values, name='b', borrow=True)
+			b = theano.shared(value=b_values, borrow=True)
 		self.W = W
 		self.b = b
 		
@@ -69,7 +69,7 @@ class Layer(object):
 		self.params = [self.W, self.b]
 
 		if loss_type == 'mse':
-			self.loss = lambda y: T.mean(((self.output - y) ** 2).sum(axis=1))
+			self.loss = lambda y: T.mean(((self.output - y) ** 2))#.sum(axis=1))
 		else:
 			self.loss = None
 
@@ -141,17 +141,20 @@ class DeepNet(object):
 		#inp = inp.reshape((32, 1, 84, 84))
 		layer0_inp = inp.reshape((32, 1, 84, 84))
 		layer0 = ConvPoolLayer(rng, layer0_inp,
-			filter_shape=(16, 1, 9, 9), image_shape=(32, 1, 84, 84), poolsize=(2,2))
+			filter_shape=(20, 1, 9, 9), image_shape=(32, 1, 84, 84), poolsize=(2,2))
 
 		layer1 = ConvPoolLayer(rng, layer0.output,
-			filter_shape=(32, 16, 5, 5), image_shape=(32, 16, 38, 38), poolsize=(2, 2))
+			filter_shape=(50, 20, 5, 5), image_shape=(32, 20, 38, 38), poolsize=(2, 2))
 
-		layer2 = Layer(rng, layer1.output.flatten(2), n_in=32 * 17 * 17, n_out=100)
-		layer3 = Layer(rng, layer2.output, n_in=100, n_out=3, loss_type='mse')
+		layer2_inp = layer1.output.flatten(2)
+
+		layer2 = Layer(rng, layer2_inp, n_in=50 * 17 * 17, n_out=256)
+		layer3 = Layer(rng, layer2.output, n_in=256, n_out=3, activation_type='None', loss_type='mse')
 		
 		self.params = layer3.params + layer2.params + layer1.params + layer0.params
 		self.layers = [layer3, layer2, layer1, layer0]
 		
+		#for debug! change again
 		self.output = layer3.output
 		self.cost = layer3.loss(target)
 
@@ -171,10 +174,11 @@ class DeepNet(object):
 		#	)
 
 		self.train_x, self.train_y = shared_dataset([
-				np.asarray(np.random.random((32, 1, 84, 84)), dtype='float32'),
-				np.asarray(np.random.random((32,3)), dtype='float32')
+				np.asarray(np.random.random((32, 84 * 84)), dtype='float32'),
+				np.asarray(np.random.random((32, 3)), dtype='float32')
 				])
-		gparams = [T.grad(self.cost, param) for param in self.params]
+
+		gparams = T.grad(self.cost, self.params)
 		
 		#updates = []
 		#rho = 0.9
@@ -189,18 +193,19 @@ class DeepNet(object):
 		#	updates.append((acc, acc_new))
 		#	updates.append((p, p - learning_rate * g))
 		
+		print "Params : ", self.params
 		updates = [(p,p - learning_rate * g) for p, g in zip(self.params, gparams)]
 
 
 		print "... building model"
 		self.train_net = theano.function(
-				inputs=[inp, target],
+				inputs=[],
 				outputs=self.cost,
-				#updates = updates,
-				#givens = {
-					#inp: self.train_x,
-					#target: self.train_y,
-					#},
+				updates = updates,
+				givens = {
+					inp: self.train_x,
+					target: self.train_y,
+					}
 				#allow_input_downcast=True,
 				#on_unused_input='ignore'
 				
@@ -257,6 +262,9 @@ def shared_dataset(data_xy):
 		np.asarray(data_x, dtype=theano.config.floatX),
 		borrow=True
 	)
+	
+	print "shape: ", data_x.shape
+	print "shape: ", data_y.shape
 
 	shared_y = theano.shared(
 		np.asarray(data_y, dtype=theano.config.floatX),

@@ -44,7 +44,7 @@ class DQNAgent(object):
 				#batch[i - 3, j, :, :] = states[i]
 
 		q_vals = self.net.compute_q(states[:32, :,:].reshape(32, 84 * 84))
-		
+		print q_vals
 		for i in xrange(self.batch_size):
 			if terminal[i]:
 				y[i][action[i]] = rewards[i]
@@ -52,11 +52,12 @@ class DQNAgent(object):
 				a = np.argmax(q_vals[i,:])
 				y[i][a] = rewards[i] + self.gamma * np.max(q_vals[i,:])
 		
-		#self.net.train_x.set_value((states[:32, :, :]).reshape(32, 84 * 84))
-		#self.net.train_y.set_value(y)
+		self.net.train_x.set_value((states[:32, :, :]).reshape(32, 84 * 84))
+		self.net.train_y.set_value(y)
 
 		for epoch in range(1,11):
-			loss = self.net.train_net(inp=states[:32, :, :].reshape(32, 84 * 84), target=y)
+			#loss = self.net.train_net(states[:32, :, :].reshape(32, 84 * 84), y)
+			loss = self.net.train_net()
 			print "Epoch: %i Loss: %f" % (epoch,loss)
 
 def get_screen_image(stream, w, h):
