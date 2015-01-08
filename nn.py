@@ -139,9 +139,9 @@ class DeepNet(object):
 		target = T.matrix('target')
 
 		#inp = inp.reshape((32, 1, 84, 84))
-		layer0_inp = inp.reshape((32, 1, 84, 84))
+		layer0_inp = inp.reshape((32, 4, 84, 84))
 		layer0 = ConvPoolLayer(rng, layer0_inp,
-			filter_shape=(20, 1, 9, 9), image_shape=(32, 1, 84, 84), poolsize=(2,2))
+			filter_shape=(20, 4, 9, 9), image_shape=(32, 4, 84, 84), poolsize=(2,2))
 
 		layer1 = ConvPoolLayer(rng, layer0.output,
 			filter_shape=(50, 20, 5, 5), image_shape=(32, 20, 38, 38), poolsize=(2, 2))
@@ -154,7 +154,6 @@ class DeepNet(object):
 		self.params = layer3.params + layer2.params + layer1.params + layer0.params
 		self.layers = [layer3, layer2, layer1, layer0]
 		
-		#for debug! change again
 		self.output = layer3.output
 		self.cost = layer3.loss(target)
 
@@ -174,27 +173,28 @@ class DeepNet(object):
 		#	)
 
 		self.train_x, self.train_y = shared_dataset([
-				np.asarray(np.random.random((32, 84 * 84)), dtype='float32'),
+				np.asarray(np.random.random((32, 4 * 84 * 84)), dtype='float32'),
 				np.asarray(np.random.random((32, 3)), dtype='float32')
 				])
 
 		gparams = T.grad(self.cost, self.params)
 		
-		#updates = []
-		#rho = 0.9
-		#epsilon = 1e-6
-		learning_rate = 0.01
-
-		#for p, g in zip(self.params, gparams):
-		#	acc = theano.shared(p.get_value() * 0.)
-		#	acc_new = rho * acc + (1 - rho) * g ** 2
-		#	gradient_scaling = T.sqrt(acc_new + epsilon)
-		#	g = g / gradient_scaling
-		#	updates.append((acc, acc_new))
-		#	updates.append((p, p - learning_rate * g))
+		updates = []
+		rho = 0.9
+		epsilon = 1e-6
+		learning_rate = 0.001
 		
-		print "Params : ", self.params
-		updates = [(p,p - learning_rate * g) for p, g in zip(self.params, gparams)]
+		#rmsprop
+		for p, g in zip(self.params, gparams):
+			acc = theano.shared(p.get_value() * 0.)
+			acc_new = rho * acc + (1 - rho) * g ** 2
+			gradient_scaling = T.sqrt(acc_new + epsilon)
+			g = g / gradient_scaling
+			updates.append((acc, acc_new))
+			updates.append((p, p - learning_rate * g))
+		
+		#sgd
+		#updates = [(p,p - learning_rate * g) for p, g in zip(self.params, gparams)]
 
 
 		print "... building model"
@@ -262,9 +262,6 @@ def shared_dataset(data_xy):
 		np.asarray(data_x, dtype=theano.config.floatX),
 		borrow=True
 	)
-	
-	print "shape: ", data_x.shape
-	print "shape: ", data_y.shape
 
 	shared_y = theano.shared(
 		np.asarray(data_y, dtype=theano.config.floatX),
@@ -273,55 +270,3 @@ def shared_dataset(data_xy):
 
 	return shared_x, shared_y
 
-def train(net, data, learning_rate=0.001, n_epochs=50, batch_size=100, optim= 'rmsprop'):
-	
-	train_x, train_y = shared_dataset(data[0])
-	n_train_batches = train_x.get_value(borrow=True).shape[0] / batch_size
-
-	valid_x, valid_y = shared_dataset(data[1])
-	n_valid_batches = valid_x.get_value(borrow=True).shape[0] / batch_size
-
-	print '... building the model'
-
-	index = T.lscalar()
-	x = T.matrix('x')
-	y = T.vector('y')
-
-	rng = np.random.RandomState(1234)
-
-	cost = net.errors()
-
-	gparams = [T.grad(cost, param) for param in net.params]
-	updates = []
-	
-	if optim == 'rmsprop':
-		rho = 0.9
-		epsilon = 1e-6
-		for p, g in zip(net.params, gparams):
-			acc = theano.shared(p.get_value() * 0.)
-			acc_new = rho * acc + (1 - rho) * g ** 2
-			gradient_scaling = T.sqrt(acc_new + epsilon)
-			g = g / gradient / scaling
-			updates.append((acc, acc_new))
-			updates.append((p, p - learning_rate * g))
-	elif optim == 'sgd':
-		for p, g in zip(net.params, gparams):
-			updates.append((p, p - learning_rate * g))
-
-	train_model = theano.function(
-		inputs=[],
-		outputs=cost,
-		updates=updates,
-		givens={
-			x: train_x,
-			y: train_y
-		}
-	)
-
-	print '... training'
-	epoch = 0
-
-	while (epoch < n_epochs) and (not done_looping):
-		epoch += 1
-		cost = train_model()
-		print "Epoch: %i Cost: %f" % (epoch, cost)

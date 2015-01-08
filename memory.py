@@ -10,19 +10,24 @@ class DataSet(object):
 		self.states = np.zeros((length, img_size[0], img_size[1]), dtype=floatX)
 		self.actions = np.zeros(length, dtype='int32')
 		self.rewards = np.zeros(length, dtype=floatX)
-		self.terminal = np.zeros(length, dtype='bool')
+		self.terminals = np.zeros(length, dtype='bool')
 	
 	def add_experience(self, state, action, reward, terminal):
 		self.states[self.count, :, :] = state
 		self.actions[self.count] = action
 		self.rewards[self.count] = reward
-		self.terminal[self.count] = terminal
+		self.terminals[self.count] = terminal
 		self.count += 1
 		
 		if self.count == self.length:
 			self.count = 0
+	
+	def get_stacked_frames(self):
+		indices = map(lambda x: x % self.length, range(self.count - 3, self.count))
+		return self.states[indices, : , :]
+
 
 	def get_random_batch(self, batch_size=32):
 		indx = np.random.randint(self.length)
 		indices = (range(self.length) + range(35))[indx:(indx + batch_size + 3)]
-		return self.states[indices, :, :], self.actions[indices], self.rewards[indices], self.terminal[indices]
+		return self.states[indices, :, :], self.actions[indices], self.rewards[indices], self.terminals[indices]

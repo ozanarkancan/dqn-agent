@@ -12,7 +12,7 @@ from nn import *
 from memory import DataSet
 
 class DQNAgent(object):
-	def __init__(self, epsilon=0.5, memory=1000, batch_size=32):
+	def __init__(self, epsilon=0.5, memory=5000, batch_size=32):
 		self.net = DeepNet()
 		self.net.default_settings()
 		self.epsilon = epsilon
@@ -24,8 +24,11 @@ class DQNAgent(object):
 		if self.epsilon >= np.random.random():
 			a = np.random.randint(3)
 		else:
-			inpt = np.zeros((32, 84 * 84), dtype='float32')
-			inpt[0,:] = state.flatten(2)
+			frames = self.dataset.get_stacked_frames()
+			inpt = np.zeros((32, 4 * 84 * 84), dtype='float32')
+
+			inpt[0,:] = np.concatenate((state.flatten(2), frames.flatten(2)))
+			#inpt = np.random.random((32, 4 * 84 * 84))
 			out = self.net.predict(inpt)
 			#out2 = self.net.single_predict(state.reshape(1,1,84,84))
 			a = np.argmax(out[0])
@@ -34,28 +37,28 @@ class DQNAgent(object):
 	def update(self):
 		print "Agent update"
 		self.epsilon = np.max(self.epsilon - 0.001, 0.025)
-		states, actions, rewards, terminal = self.dataset.get_random_batch()
-		batch = np.zeros((self.batch_size, 4, 84, 84))
+		states, actions, rewards, terminals = self.dataset.get_random_batch()
+		batch = np.zeros((self.batch_size, 4, 84, 84), dtype='float32')
 		y = np.zeros((self.batch_size, 3), dtype='float32')
 		
-		#Not stacked 4 frame
-		#for i in xrange(3, self.batch_size + 3):
-			#for j in xrange(4):
-				#batch[i - 3, j, :, :] = states[i]
+		for i in xrange(3, self.batch_size + 3):
+			for j in xrange(4):
+				batch[i - 3, j, :, :] = states[i]
 
-		q_vals = self.net.compute_q(states[:32, :,:].reshape(32, 84 * 84))
+		#q_vals = self.net.compute_q(states[:32, :,:].reshape(32, 84 * 84))
+		q_vals = self.net.compute_q(batch.reshape(32, 4 * 84 * 84))
 		print q_vals
 		for i in xrange(self.batch_size):
-			if terminal[i]:
+			if terminals[i]:
 				y[i][action[i]] = rewards[i]
 			else:
 				a = np.argmax(q_vals[i,:])
 				y[i][a] = rewards[i] + self.gamma * np.max(q_vals[i,:])
 		
-		self.net.train_x.set_value((states[:32, :, :]).reshape(32, 84 * 84))
+		self.net.train_x.set_value(batch.reshape(32, 4 * 84 * 84))
 		self.net.train_y.set_value(y)
 
-		for epoch in range(1,11):
+		for epoch in range(1,16):
 			#loss = self.net.train_net(states[:32, :, :].reshape(32, 84 * 84), y)
 			loss = self.net.train_net()
 			print "Epoch: %i Loss: %f" % (epoch,loss)
