@@ -111,7 +111,7 @@ if __name__== "__main__":
 	frame = 0
 
         for i in xrange(episodes):
-                p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-frame_skip", "4", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE)
+                p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-frame_skip", "4", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE, stderr=PIPE)
                 line = p.stdout.readline()
                 w,h = map(int, line.split("-"))
                 p.stdin.write("1,0,0,1\n")#screen and episode information
