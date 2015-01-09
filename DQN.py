@@ -35,7 +35,7 @@ class DQNAgent(object):
 		return a
 
 	def update(self):
-		print "Agent update"
+		#print "Agent update"
 		self.epsilon = np.max(self.epsilon - 0.001, 0.025)
 		states, actions, rewards, terminals = self.dataset.get_random_batch()
 		batch = np.zeros((self.batch_size, 4, 84, 84), dtype='float32')
@@ -50,7 +50,7 @@ class DQNAgent(object):
 		#print q_vals
 		for i in xrange(self.batch_size):
 			if terminals[i]:
-				y[i][action[i]] = rewards[i]
+				y[i][actions[i]] = rewards[i]
 			else:
 				a = np.argmax(q_vals[i,:])
 				y[i][a] = rewards[i] + self.gamma * np.max(q_vals[i,:])
