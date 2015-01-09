@@ -85,9 +85,9 @@ def get_arg_parser():
 	parser = argparse.ArgumentParser(prog="DQN")
 	parser.add_argument("--ale", required=True, help="ale path")
 	parser.add_argument("--rom", default="breakout.bin", help="rom name")
-	parser.add_argument("--episodes", default=200, help="number of episodes")
-	parser.add_argument("--updatetime", default=5, help="when the network must be trained (frame)")
-	parser.add_argument("--n", default=10000, help="dataset memory size")
+	parser.add_argument("--episodes", default=200, type=int, help="number of episodes")
+	parser.add_argument("--updatetime", default=5, type=int, help="when the network must be trained (frame)")
+	parser.add_argument("--n", default=10000, type=int, help="dataset memory size")
 	parser.add_argument("--display", default="ever", help="'ever' for displaying ever, \
 		'partial' for displaying at per 100 episode, 'never' for no display")
 	return parser
