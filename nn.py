@@ -69,7 +69,7 @@ class Layer(object):
 		self.params = [self.W, self.b]
 
 		if loss_type == 'mse':
-			self.loss = lambda y: T.mean(((self.output - y) ** 2))#.sum(axis=1))
+			self.loss = lambda y: T.mean(((self.output - y) ** 2).sum(axis=1))
 		else:
 			self.loss = None
 
