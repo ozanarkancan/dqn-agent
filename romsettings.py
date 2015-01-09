@@ -23,7 +23,7 @@ def get_number_of_legal_actions(rom_name):
 
 def map_action(action, rom_name):
 	if rom_name.startswith("breakout"):
-		return breakout[aciton]
+		return breakout[action]
 	elif rom_name.startswith("freeway"):
 		return freeway[action]
 	elif rom_name.startswith("pong"):
