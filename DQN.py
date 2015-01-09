@@ -10,19 +10,21 @@ import theano
 from random import uniform, randint
 from nn import *
 from memory import DataSet
+from romsettings import *
 
 class DQNAgent(object):
-	def __init__(self, epsilon=0.5, memory=5000, batch_size=32):
+	def __init__(self, n_actions=18, epsilon=0.5, memory=5000, batch_size=32):
 		self.net = DeepNet()
-		self.net.default_settings()
+		self.net.default_settings(n_actions)
 		self.epsilon = epsilon
 		self.dataset = DataSet(length=memory)
 		self.batch_size= batch_size
 		self.gamma = 0.05
+		self.n_actions = n_actions
 	
 	def get_action(self, state):
 		if self.epsilon >= np.random.random():
-			a = np.random.randint(3)
+			a = np.random.randint(self.n_actions)
 		else:
 			frames = self.dataset.get_stacked_frames()
 			inpt = np.zeros((32, 4 * 84 * 84), dtype='float32')
@@ -39,7 +41,7 @@ class DQNAgent(object):
 		self.epsilon = np.max(self.epsilon - 0.001, 0.025)
 		states, actions, rewards, terminals = self.dataset.get_random_batch()
 		batch = np.zeros((self.batch_size, 4, 84, 84), dtype='float32')
-		y = np.zeros((self.batch_size, 3), dtype='float32')
+		y = np.zeros((self.batch_size, self.n_actions), dtype='float32')
 		
 		for i in xrange(3, self.batch_size + 3):
 			for j in xrange(4):
@@ -102,12 +104,14 @@ if __name__== "__main__":
 	updatetime = args['updatetime']
 	n = args['n']
 
-	agent = DQNAgent(memory=n)
+	agent = DQNAgent(
+		n_actions=get_number_of_legal_actions(rom),
+		memory=n)
 	
 	frame = 0
 
         for i in xrange(episodes):
-                p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE)
+                p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-frame_skip", "4", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE)
                 line = p.stdout.readline()
                 w,h = map(int, line.split("-"))
                 p.stdin.write("1,0,0,1\n")#screen and episode information
@@ -126,7 +130,7 @@ if __name__== "__main__":
                         state = preprocess(img)
 			
 			if terminal == 1:
-                                print "Episode %i Total reward %i: ", (i + 1, total_reward)
+                                print "Episode %i Total reward %i: " % (i + 1, total_reward)
 				game_end = True
                         
 			if frame != 0:
@@ -141,7 +145,6 @@ if __name__== "__main__":
 			action = agent.get_action(state)
                         previous_action = action
 			previous_state = state
-			if action > 0:
-				action = action + 2
+			action = map_action(action, rom)
                         p.stdin.write(str(action) + ",18\n")
 		p.kill()	

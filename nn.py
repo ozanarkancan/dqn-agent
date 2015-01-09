@@ -132,7 +132,7 @@ class DeepNet(object):
 	#loss_type
 	#input : if first layer
 
-	def default_settings(self):
+	def default_settings(self, outsize=18):
 		rng = np.random.RandomState(1234)
 		inp = T.matrix('inp')
 		#inp = T.tensor4('inp')
@@ -149,7 +149,7 @@ class DeepNet(object):
 		layer2_inp = layer1.output.flatten(2)
 
 		layer2 = Layer(rng, layer2_inp, n_in=50 * 17 * 17, n_out=256)
-		layer3 = Layer(rng, layer2.output, n_in=256, n_out=3, activation_type='None', loss_type='mse')
+		layer3 = Layer(rng, layer2.output, n_in=256, n_out=outsize, activation_type='None', loss_type='mse')
 		
 		self.params = layer3.params + layer2.params + layer1.params + layer0.params
 		self.layers = [layer3, layer2, layer1, layer0]
@@ -174,7 +174,7 @@ class DeepNet(object):
 
 		self.train_x, self.train_y = shared_dataset([
 				np.asarray(np.random.random((32, 4 * 84 * 84)), dtype='float32'),
-				np.asarray(np.random.random((32, 3)), dtype='float32')
+				np.asarray(np.random.random((32, outsize)), dtype='float32')
 				])
 
 		gparams = T.grad(self.cost, self.params)
