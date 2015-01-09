@@ -13,13 +13,13 @@ from memory import DataSet
 from romsettings import *
 
 class DQNAgent(object):
-	def __init__(self, n_actions=18, epsilon=0.5, memory=5000, batch_size=32):
+	def __init__(self, n_actions=18, epsilon=1, memory=5000, batch_size=32):
 		self.net = DeepNet()
 		self.net.default_settings(n_actions)
 		self.epsilon = epsilon
 		self.dataset = DataSet(length=memory)
 		self.batch_size= batch_size
-		self.gamma = 0.05
+		self.gamma = 0.9
 		self.n_actions = n_actions
 	
 	def get_action(self, state):
@@ -38,7 +38,7 @@ class DQNAgent(object):
 
 	def update(self):
 		#print "Agent update"
-		self.epsilon = np.max(self.epsilon - 0.001, 0.025)
+		self.epsilon = np.max(self.epsilon - 0.001, 0.05)
 		states, actions, rewards, terminals = self.dataset.get_random_batch()
 		batch = np.zeros((self.batch_size, 4, 84, 84), dtype='float32')
 		y = np.zeros((self.batch_size, self.n_actions), dtype='float32')
@@ -85,9 +85,9 @@ def get_arg_parser():
 	parser = argparse.ArgumentParser(prog="DQN")
 	parser.add_argument("--ale", required=True, help="ale path")
 	parser.add_argument("--rom", default="breakout.bin", help="rom name")
-	parser.add_argument("--episodes", default=100, help="number of episodes")
+	parser.add_argument("--episodes", default=200, help="number of episodes")
 	parser.add_argument("--updatetime", default=100, help="when the network must be trained (frame)")
-	parser.add_argument("--n", default=1000, help="dataset memory size")
+	parser.add_argument("--n", default=10000, help="dataset memory size")
 	parser.add_argument("--display", default="ever", help="'ever' for displaying ever, \
 		'partial' for displaying at per 100 episode, 'never' for no display")
 	return parser

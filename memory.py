@@ -11,6 +11,7 @@ class DataSet(object):
 		self.actions = np.zeros(length, dtype='int32')
 		self.rewards = np.zeros(length, dtype=floatX)
 		self.terminals = np.zeros(length, dtype='bool')
+		self.available = 0
 	
 	def add_experience(self, state, action, reward, terminal):
 		self.states[self.count, :, :] = state
@@ -19,6 +20,9 @@ class DataSet(object):
 		self.terminals[self.count] = terminal
 		self.count += 1
 		
+		if self.available != self.length:
+			self.available = self.count
+
 		if self.count == self.length:
 			self.count = 0
 	
@@ -28,6 +32,6 @@ class DataSet(object):
 
 
 	def get_random_batch(self, batch_size=32):
-		indx = np.random.randint(self.length)
+		indx = np.random.randint(self.available)
 		indices = (range(self.length) + range(35))[indx:(indx + batch_size + 3)]
 		return self.states[indices, :, :], self.actions[indices], self.rewards[indices], self.terminals[indices]
