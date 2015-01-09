@@ -109,6 +109,7 @@ if __name__== "__main__":
 		memory=n)
 	
 	frame = 0
+	total_rewards = 0.
 
         for i in xrange(episodes):
                 p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-frame_skip", "4", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -130,7 +131,8 @@ if __name__== "__main__":
                         state = preprocess(img)
 			
 			if terminal == 1:
-                                print "Episode %i Total reward %i: " % (i + 1, total_reward)
+                                print "Episode: %i Total reward: %i " % (i + 1, total_reward)
+				total_rewards += total_reward
 				game_end = True
                         
 			if frame != 0:
@@ -147,4 +149,5 @@ if __name__== "__main__":
 			previous_state = state
 			action = map_action(action, rom)
                         p.stdin.write(str(action) + ",18\n")
-		p.kill()	
+		p.kill()
+	print "Average Total Rewards: %f" % (total_rewards / episodes)
