@@ -32,6 +32,7 @@ class DQNAgent(object):
 			inpt[0,:] = np.concatenate((state.flatten(2), frames.flatten(2)))
 			#inpt = np.random.random((32, 4 * 84 * 84))
 			out = self.net.predict(inpt)
+			print out
 			#out2 = self.net.single_predict(state.reshape(1,1,84,84))
 			a = np.argmax(out[0])
 		return a
@@ -49,7 +50,7 @@ class DQNAgent(object):
 
 		#q_vals = self.net.compute_q(states[:32, :,:].reshape(32, 84 * 84))
 		q_vals = self.net.compute_q(batch.reshape(32, 4 * 84 * 84))
-		#print q_vals
+		print "Qs: ", q_vals
 		for i in xrange(self.batch_size):
 			if terminals[i]:
 				y[i][actions[i]] = rewards[i]
@@ -60,10 +61,10 @@ class DQNAgent(object):
 		self.net.train_x.set_value(batch.reshape(32, 4 * 84 * 84))
 		self.net.train_y.set_value(y)
 
-		for epoch in range(1,11):
+		for epoch in range(1,26):
 			#loss = self.net.train_net(states[:32, :, :].reshape(32, 84 * 84), y)
 			loss = self.net.train_net()
-			#print "Epoch: %i Loss: %f" % (epoch,loss)
+			print "Epoch: %i Loss: %f" % (epoch,loss)
 
 def get_screen_image(stream, w, h):
 	img = np.array([], dtype=theano.config.floatX)
@@ -145,6 +146,9 @@ if __name__== "__main__":
 				break
                         
 			action = agent.get_action(state)
+
+			if frame > 25000 and frame < 25500:
+				print "Action: ", action
                         previous_action = action
 			previous_state = state
 			action = map_action(action, rom)

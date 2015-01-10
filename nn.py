@@ -32,7 +32,7 @@ class LogisticRegression(object):
 		return T.mean(T.neq(self.y_pred, y))
 
 class Layer(object):
-	def __init__(self, rng, input, n_in, n_out, W=None, b=None, activation_type='tanh', loss_type=None):
+	def __init__(self, rng, input, n_in, n_out, W=None, b=None, activation_type='sigmoid', loss_type=None):
 		self.input = input
 		if W is None:
 			W_values = np.asarray(
@@ -58,7 +58,7 @@ class Layer(object):
 		elif activation_type == 'tanh':
 			activation = T.tanh
 		elif activation_type == 'relu':
-			activation = lambda x: x * (x > 0)
+			activation = lambda x: T.maximum(x, 0.0)#lambda x: x * (x > 0)
 		else:
 			activation = None
 
@@ -69,7 +69,7 @@ class Layer(object):
 		self.params = [self.W, self.b]
 
 		if loss_type == 'mse':
-			self.loss = lambda y: T.mean(((self.output - y) ** 2).sum(axis=1))
+			self.loss = lambda y: T.mean((self.output - y) ** 2)
 		else:
 			self.loss = None
 
@@ -109,8 +109,10 @@ class ConvPoolLayer(object):
 			ds=poolsize,
 			ignore_border=True
 		)
-
-		self.output = T.tanh(pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
+		relu_f = lambda x: T.maximum(x, 0.0)#lambda x : x * (x > 0)
+		#self.output = T.tanh(pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
+		#self.output = relu_f(pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
+		self.output = T.nnet.sigmoid(pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
 		self.params = [self.W, self.b]
 
 class DeepNet(object):
@@ -141,14 +143,14 @@ class DeepNet(object):
 		#inp = inp.reshape((32, 1, 84, 84))
 		layer0_inp = inp.reshape((32, 4, 84, 84))
 		layer0 = ConvPoolLayer(rng, layer0_inp,
-			filter_shape=(20, 4, 9, 9), image_shape=(32, 4, 84, 84), poolsize=(2,2))
+			filter_shape=(16, 4, 9, 9), image_shape=(32, 4, 84, 84), poolsize=(2,2))
 
 		layer1 = ConvPoolLayer(rng, layer0.output,
-			filter_shape=(50, 20, 5, 5), image_shape=(32, 20, 38, 38), poolsize=(2, 2))
+			filter_shape=(30, 16, 5, 5), image_shape=(32, 16, 38, 38), poolsize=(2, 2))
 
 		layer2_inp = layer1.output.flatten(2)
 
-		layer2 = Layer(rng, layer2_inp, n_in=50 * 17 * 17, n_out=256)
+		layer2 = Layer(rng, layer2_inp, n_in=30 * 17 * 17, n_out=256)
 		layer3 = Layer(rng, layer2.output, n_in=256, n_out=outsize, activation_type='None', loss_type='mse')
 		
 		self.params = layer3.params + layer2.params + layer1.params + layer0.params
@@ -180,21 +182,21 @@ class DeepNet(object):
 		gparams = T.grad(self.cost, self.params)
 		
 		updates = []
-		rho = 0.9
-		epsilon = 1e-6
-		learning_rate = 0.001
+		#rho = 0.9
+		#epsilon = 1e-6
+		learning_rate = 0.0001
 		
 		#rmsprop
-		for p, g in zip(self.params, gparams):
-			acc = theano.shared(p.get_value() * 0.)
-			acc_new = rho * acc + (1 - rho) * g ** 2
-			gradient_scaling = T.sqrt(acc_new + epsilon)
-			g = g / gradient_scaling
-			updates.append((acc, acc_new))
-			updates.append((p, p - learning_rate * g))
+		#for p, g in zip(self.params, gparams):
+		#	acc = theano.shared(p.get_value() * 0.)
+		#	acc_new = rho * acc + (1 - rho) * g ** 2
+		#	gradient_scaling = T.sqrt(acc_new + epsilon)
+		#	g = g / gradient_scaling
+		#	updates.append((acc, acc_new))
+		#	updates.append((p, p - learning_rate * g))
 		
 		#sgd
-		#updates = [(p,p - learning_rate * g) for p, g in zip(self.params, gparams)]
+		updates = [(p,p - learning_rate * g) for p, g in zip(self.params, gparams)]
 
 
 		print "... building model"
@@ -247,13 +249,6 @@ class DeepNet(object):
 		
 		self.layers.append(layer)
 		self.params.extend(layer.params)
-	
-	def build(self, s_img):
-		self.predict = theano.function(
-			inputs = [s_img],
-			outputs = self.output,
-			allow_input_downcast=True
-		)	
 
 def shared_dataset(data_xy):
 	data_x, data_y = data_xy
