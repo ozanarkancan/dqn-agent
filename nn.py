@@ -32,7 +32,7 @@ class LogisticRegression(object):
 		return T.mean(T.neq(self.y_pred, y))
 
 class Layer(object):
-	def __init__(self, rng, input, n_in, n_out, W=None, b=None, activation_type='relu', loss_type=None):
+	def __init__(self, rng, input, n_in, n_out, W=None, b=None, activation_type='tanh', loss_type=None):
 		self.input = input
 		if W is None:
 			W_values = np.asarray(
@@ -69,7 +69,7 @@ class Layer(object):
 		self.params = [self.W, self.b]
 
 		if loss_type == 'mse':
-			self.loss = lambda y: T.mean(((self.output - y) ** 2), axis=1).sum()
+			self.loss = lambda y: T.mean(T.sum((self.output - y) ** 2, axis=1))
 		else:
 			self.loss = None
 
@@ -184,7 +184,7 @@ class DeepNet(object):
 		updates = []
 		#rho = 0.9
 		#epsilon = 1e-6
-		learning_rate = 0.0005
+		learning_rate = 0.0001
 		
 		#rmsprop
 		#for p, g in zip(self.params, gparams):
@@ -215,9 +215,9 @@ class DeepNet(object):
 				givens = {
 					inp: self.train_x,
 					target: self.train_y,
-					}#,
-				#mode=theano.compile.MonitorMode(
-		                #        post_func=detect_nan)
+					},
+				mode=theano.compile.MonitorMode(
+		                        post_func=detect_nan)
 				#allow_input_downcast=True,
 				#on_unused_input='ignore'
 				

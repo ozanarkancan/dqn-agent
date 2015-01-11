@@ -11,6 +11,7 @@ from nn import *
 from memory import DataSet
 from romsettings import *
 import color
+import cPickle
 
 class DQNAgent(object):
 	def __init__(self, n_actions=18, epsilon=1, memory=5000, batch_size=32):
@@ -32,14 +33,13 @@ class DQNAgent(object):
 			inpt[0,:] = np.concatenate((state.flatten(2), frames.flatten(2)))
 			#inpt = np.random.random((32, 4 * 84 * 84))
 			out = self.net.predict(inpt)
-			#print out
 			#out2 = self.net.single_predict(state.reshape(1,1,84,84))
-			a = np.argmax(out[0])
+			a = out[0]
 		return a
 
 	def update(self):
 		#print "Agent update"
-		self.epsilon = np.max(self.epsilon - 0.001, 0.05)
+		self.epsilon = np.max(self.epsilon - 0.0001, 0.05)
 		states, actions, rewards, terminals = self.dataset.get_random_batch()
 		batch = np.zeros((self.batch_size, 4, 84, 84), dtype='float32')
 		y = np.zeros((self.batch_size, self.n_actions), dtype='float32')
@@ -66,19 +66,99 @@ class DQNAgent(object):
 		#for l in self.net.layers:
 		#	print l.params[0].get_value()
 
-		if np.isnan(batch).any():
-			print "Batch has nan\n", batch
-
-		for epoch in range(1,26):
-			#loss = self.net.train_net(states[:32, :, :].reshape(32, 84 * 84), y)
+		for epoch in range(1,6):
 			loss = self.net.train_net()
-			print "Epoch: %i Loss: %f" % (epoch,loss)
+			#print "Epoch: %i Loss: %f" % (epoch,loss)
+	def save(self):
+		f = file('save/net.save', 'wb')
+		for p in self.net.params:
+			cPickle.dump(p, f, protocol=cPickle.HIGHEST_PROTOCOL)
+		f.close()
+	
+	def load(self):
+		f = file('save/net.save', 'rb')
+		for i in range(self.net.params):
+			self.net.params[i] = cPickle.load(f)
+		f.close()
+	
+	def train(self):
+		frame = 0
+		total_rewards = 0.
+
+        	for i in xrange(episodes):
+                	p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-frame_skip", "4", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+                	line = p.stdout.readline()
+                	w,h = map(int, line.split("-"))
+                	p.stdin.write("1,0,0,1\n")#screen and episode information
+                	total_reward = 0
+                	previous_action = 0           
+			previous_state = None
+
+                	#game loop
+			game_end = False
+                	for line in iter(p.stdout.readline, b''):
+				frame += 1
+                        	envinfo = line.strip()[:-1].split(":")
+                        	img = get_screen_image(envinfo[0], w, h)
+                        	terminal, reward = map(int, envinfo[1].split(","))
+                        	total_reward += reward
+                        	state = preprocess(img)
+				if terminal == 1:
+                                	print "Episode: %i Total reward: %i " % (i + 1, total_reward)
+					total_rewards += total_reward
+					game_end = True
+                        
+				if not previous_state is None:
+					agent.dataset.add_experience(previous_state, previous_action, reward, terminal == 1)
+
+				if frame % updatetime == 0 and agent.dataset.available > 100:
+					agent.update()
+
+				if game_end:
+					break
+                        
+				action = agent.get_action(state)
+
+                        	previous_action = action
+				previous_state = state
+				action = map_action(action, rom)
+                        	p.stdin.write(str(action) + ",18\n")
+			p.kill()
+			self.save()
+	
+		print "Average Total Rewards: %f" % (total_rewards / episodes)
+
+	def play(self):
+		self.epsilon = 0.05
+		for i in xrange(episodes):
+                	p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+                	line = p.stdout.readline()
+                	w,h = map(int, line.split("-"))
+                	p.stdin.write("1,0,0,1\n")#screen and episode information
+                	total_reward = 0
+
+                	#game loop
+			game_end = False
+                	for line in iter(p.stdout.readline, b''):
+                        	envinfo = line.strip()[:-1].split(":")
+                        	img = get_screen_image(envinfo[0], w, h)
+                        	terminal, reward = map(int, envinfo[1].split(","))
+				total_reward += reward
+                        	state = preprocess(img)
+				if terminal == 1:
+                                	print "Episode: %i Total reward: %i " % (i + 1, total_reward)
+					game_end = True
+					break
+                        
+				action = agent.get_action(state)
+				action = map_action(action, rom)
+                        	p.stdin.write(str(action) + ",18\n")
+			p.kill()
 
 def get_screen_image(stream, w, h):
 	img = np.array([], dtype=theano.config.floatX)
 	for i in xrange(h):
 		row = stream[i*2*w:(i+1)*2*w]
-                #convert = lambda x : ((x/32) + ((x%32)/4) + ((x%4)*2))/24.0
 		pixels = np.array([color.Palette[row[p*2:(p+1)*2]] for p in range(w)])
 		if len(img) == 0:
 			img = pixels
@@ -90,9 +170,6 @@ def preprocess(img, ):
 	img_down = Image.fromarray(img[33:193,:])
 	img_down.thumbnail((84, 84), Image.NEAREST)
 	img_down = np.asarray(img_down,dtype='float32')
-
-	if np.isnan(img_down).any():
-		print "Problem is in preprocess"
         return img_down
 
 def get_arg_parser():
@@ -104,6 +181,7 @@ def get_arg_parser():
 	parser.add_argument("--n", default=10000, type=int, help="dataset memory size")
 	parser.add_argument("--display", default="ever", help="'ever' for displaying ever, \
 		'partial' for displaying at per 100 episode, 'never' for no display")
+	parser.add_argument("--mode", default="train", help="train or play")
 	return parser
 
 if __name__== "__main__":
@@ -116,51 +194,13 @@ if __name__== "__main__":
 	episodes = args['episodes']
 	updatetime = args['updatetime']
 	n = args['n']
+	mode = args['mode']
 
 	agent = DQNAgent(
 		n_actions=get_number_of_legal_actions(rom),
 		memory=n)
 	
-	frame = 0
-	total_rewards = 0.
-
-        for i in xrange(episodes):
-                p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-frame_skip", "4", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE, stderr=PIPE)
-                line = p.stdout.readline()
-                w,h = map(int, line.split("-"))
-                p.stdin.write("1,0,0,1\n")#screen and episode information
-                total_reward = 0
-                previous_action = 0           
-		previous_state = None
-
-                #game loop
-		game_end = False
-                for line in iter(p.stdout.readline, b''):
-			frame += 1
-                        envinfo = line.strip()[:-1].split(":")
-                        img = get_screen_image(envinfo[0], w, h)
-                        terminal, reward = map(int, envinfo[1].split(","))
-                        total_reward += reward
-                        state = preprocess(img)
-			if terminal == 1:
-                                print "Episode: %i Total reward: %i " % (i + 1, total_reward)
-				total_rewards += total_reward
-				game_end = True
-                        
-			if not previous_state is None:
-				agent.dataset.add_experience(previous_state, previous_action, reward, terminal == 1)
-
-			if frame % updatetime == 0 and agent.dataset.available > 100:
-				agent.update()
-
-			if game_end:
-				break
-                        
-			action = agent.get_action(state)
-
-                        previous_action = action
-			previous_state = state
-			action = map_action(action, rom)
-                        p.stdin.write(str(action) + ",18\n")
-		p.kill()
-	print "Average Total Rewards: %f" % (total_rewards / episodes)
+	if mode == "train":
+		agent.train()
+	else:
+		agent.play()
