@@ -32,6 +32,6 @@ class DataSet(object):
 
 
 	def get_random_batch(self, batch_size=32):
-		indx = np.random.randint(self.available)
+		indx = np.random.randint(self.available - 32)
 		indices = (range(self.length) + range(35))[indx:(indx + batch_size + 3)]
 		return self.states[indices, :, :], self.actions[indices], self.rewards[indices], self.terminals[indices]

@@ -4,13 +4,13 @@ from subprocess import Popen, PIPE
 import argparse
 import numpy as np
 import scipy.ndimage
-from scipy.misc import imresize
-#import cv2
+from PIL import Image
 import theano
 from random import uniform, randint
 from nn import *
 from memory import DataSet
 from romsettings import *
+import color
 
 class DQNAgent(object):
 	def __init__(self, n_actions=18, epsilon=1, memory=5000, batch_size=32):
@@ -32,7 +32,7 @@ class DQNAgent(object):
 			inpt[0,:] = np.concatenate((state.flatten(2), frames.flatten(2)))
 			#inpt = np.random.random((32, 4 * 84 * 84))
 			out = self.net.predict(inpt)
-			print out
+			#print out
 			#out2 = self.net.single_predict(state.reshape(1,1,84,84))
 			a = np.argmax(out[0])
 		return a
@@ -43,14 +43,13 @@ class DQNAgent(object):
 		states, actions, rewards, terminals = self.dataset.get_random_batch()
 		batch = np.zeros((self.batch_size, 4, 84, 84), dtype='float32')
 		y = np.zeros((self.batch_size, self.n_actions), dtype='float32')
-		
 		for i in xrange(3, self.batch_size + 3):
 			for j in xrange(4):
 				batch[i - 3, j, :, :] = states[i]
 
 		#q_vals = self.net.compute_q(states[:32, :,:].reshape(32, 84 * 84))
 		q_vals = self.net.compute_q(batch.reshape(32, 4 * 84 * 84))
-		print "Qs: ", q_vals
+		#print "Qs: ", q_vals
 		for i in xrange(self.batch_size):
 			if terminals[i]:
 				y[i][actions[i]] = rewards[i]
@@ -58,8 +57,17 @@ class DQNAgent(object):
 				a = np.argmax(q_vals[i,:])
 				y[i][a] = rewards[i] + self.gamma * np.max(q_vals[i,:])
 		
+		#print "Batch:\n", batch[:,:, 20:70, 20:70]
 		self.net.train_x.set_value(batch.reshape(32, 4 * 84 * 84))
 		self.net.train_y.set_value(y)
+		
+		#print self.net.layers[0].input.eval()
+		#print "Weights: "
+		#for l in self.net.layers:
+		#	print l.params[0].get_value()
+
+		if np.isnan(batch).any():
+			print "Batch has nan\n", batch
 
 		for epoch in range(1,26):
 			#loss = self.net.train_net(states[:32, :, :].reshape(32, 84 * 84), y)
@@ -70,8 +78,8 @@ def get_screen_image(stream, w, h):
 	img = np.array([], dtype=theano.config.floatX)
 	for i in xrange(h):
 		row = stream[i*2*w:(i+1)*2*w]
-                convert = lambda x : ((x/32) + ((x%32)/4) + ((x%4)*2))/24.0
-		pixels = np.array([convert(int(row[p*2:(p+1)*2],16)) for p in range(w)])
+                #convert = lambda x : ((x/32) + ((x%32)/4) + ((x%4)*2))/24.0
+		pixels = np.array([color.Palette[row[p*2:(p+1)*2]] for p in range(w)])
 		if len(img) == 0:
 			img = pixels
 		else:
@@ -79,7 +87,12 @@ def get_screen_image(stream, w, h):
 	return img
 
 def preprocess(img, ):
-	img_down = imresize(img[34:194, :], 0.525) / 256.
+	img_down = Image.fromarray(img[33:193,:])
+	img_down.thumbnail((84, 84), Image.NEAREST)
+	img_down = np.asarray(img_down,dtype='float32')
+
+	if np.isnan(img_down).any():
+		print "Problem is in preprocess"
         return img_down
 
 def get_arg_parser():
@@ -96,7 +109,6 @@ def get_arg_parser():
 if __name__== "__main__":
 	theano.config.exception_verbosity = 'high'
 	parser = get_arg_parser()
-	parser.print_help()
 
 	args = vars(parser.parse_args())
 	ale = args['ale']
@@ -130,13 +142,12 @@ if __name__== "__main__":
                         terminal, reward = map(int, envinfo[1].split(","))
                         total_reward += reward
                         state = preprocess(img)
-			
 			if terminal == 1:
                                 print "Episode: %i Total reward: %i " % (i + 1, total_reward)
 				total_rewards += total_reward
 				game_end = True
                         
-			if frame != 0:
+			if not previous_state is None:
 				agent.dataset.add_experience(previous_state, previous_action, reward, terminal == 1)
 
 			if frame % updatetime == 0 and agent.dataset.available > 100:
@@ -147,8 +158,6 @@ if __name__== "__main__":
                         
 			action = agent.get_action(state)
 
-			if frame > 25000 and frame < 25500:
-				print "Action: ", action
                         previous_action = action
 			previous_state = state
 			action = map_action(action, rom)

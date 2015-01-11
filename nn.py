@@ -32,7 +32,7 @@ class LogisticRegression(object):
 		return T.mean(T.neq(self.y_pred, y))
 
 class Layer(object):
-	def __init__(self, rng, input, n_in, n_out, W=None, b=None, activation_type='sigmoid', loss_type=None):
+	def __init__(self, rng, input, n_in, n_out, W=None, b=None, activation_type='relu', loss_type=None):
 		self.input = input
 		if W is None:
 			W_values = np.asarray(
@@ -69,7 +69,7 @@ class Layer(object):
 		self.params = [self.W, self.b]
 
 		if loss_type == 'mse':
-			self.loss = lambda y: T.mean((self.output - y) ** 2)
+			self.loss = lambda y: T.mean(((self.output - y) ** 2), axis=1).sum()
 		else:
 			self.loss = None
 
@@ -109,10 +109,10 @@ class ConvPoolLayer(object):
 			ds=poolsize,
 			ignore_border=True
 		)
-		relu_f = lambda x: T.maximum(x, 0.0)#lambda x : x * (x > 0)
-		#self.output = T.tanh(pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
+		#relu_f = lambda x: T.maximum(x, 0.0)#lambda x : x * (x > 0)
+		self.output = T.tanh(pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
 		#self.output = relu_f(pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
-		self.output = T.nnet.sigmoid(pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
+		#self.output = T.nnet.sigmoid(pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
 		self.params = [self.W, self.b]
 
 class DeepNet(object):
@@ -184,7 +184,7 @@ class DeepNet(object):
 		updates = []
 		#rho = 0.9
 		#epsilon = 1e-6
-		learning_rate = 0.0001
+		learning_rate = 0.0005
 		
 		#rmsprop
 		#for p, g in zip(self.params, gparams):
@@ -197,7 +197,15 @@ class DeepNet(object):
 		
 		#sgd
 		updates = [(p,p - learning_rate * g) for p, g in zip(self.params, gparams)]
-
+		
+		def detect_nan(i, node, fn):
+		    for output in fn.outputs:
+		            if np.isnan(output[0]).any():
+			        print '*** NaN detected ***'
+				theano.printing.debugprint(node)
+				print 'Inputs : %s' % [input[0] for input in fn.inputs]
+				print 'Outputs: %s' % [output[0] for output in fn.outputs]
+				break
 
 		print "... building model"
 		self.train_net = theano.function(
@@ -207,7 +215,9 @@ class DeepNet(object):
 				givens = {
 					inp: self.train_x,
 					target: self.train_y,
-					}
+					}#,
+				#mode=theano.compile.MonitorMode(
+		                #        post_func=detect_nan)
 				#allow_input_downcast=True,
 				#on_unused_input='ignore'
 				
