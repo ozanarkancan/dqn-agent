@@ -146,11 +146,11 @@ class DeepNet(object):
 			filter_shape=(16, 4, 9, 9), image_shape=(32, 4, 84, 84), poolsize=(2,2))
 
 		layer1 = ConvPoolLayer(rng, layer0.output,
-			filter_shape=(30, 16, 5, 5), image_shape=(32, 16, 38, 38), poolsize=(2, 2))
+			filter_shape=(34, 16, 5, 5), image_shape=(32, 16, 38, 38), poolsize=(2, 2))
 
 		layer2_inp = layer1.output.flatten(2)
 
-		layer2 = Layer(rng, layer2_inp, n_in=30 * 17 * 17, n_out=256)
+		layer2 = Layer(rng, layer2_inp, n_in=34 * 17 * 17, n_out=256)
 		layer3 = Layer(rng, layer2.output, n_in=256, n_out=outsize, activation_type='None', loss_type='mse')
 		
 		self.params = layer3.params + layer2.params + layer1.params + layer0.params
@@ -215,9 +215,9 @@ class DeepNet(object):
 				givens = {
 					inp: self.train_x,
 					target: self.train_y,
-					},
-				mode=theano.compile.MonitorMode(
-		                        post_func=detect_nan)
+					}#,
+				#mode=theano.compile.MonitorMode(
+		                #        post_func=detect_nan)
 				#allow_input_downcast=True,
 				#on_unused_input='ignore'
 				
