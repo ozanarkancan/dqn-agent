@@ -184,7 +184,7 @@ class DeepNet(object):
 		updates = []
 		#rho = 0.9
 		#epsilon = 1e-6
-		learning_rate = 0.0001
+		learning_rate = 0.01
 		
 		#rmsprop
 		#for p, g in zip(self.params, gparams):

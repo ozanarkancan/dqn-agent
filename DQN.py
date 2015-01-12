@@ -20,7 +20,7 @@ class DQNAgent(object):
 		self.epsilon = epsilon
 		self.dataset = DataSet(length=memory)
 		self.batch_size= batch_size
-		self.gamma = 0.9
+		self.gamma = 0.95
 		self.n_actions = n_actions
 	
 	def get_action(self, state):
@@ -31,9 +31,8 @@ class DQNAgent(object):
 			inpt = np.zeros((32, 4 * 84 * 84), dtype='float32')
 
 			inpt[0,:] = np.concatenate((state.flatten(2), frames.flatten(2)))
-			#inpt = np.random.random((32, 4 * 84 * 84))
 			out = self.net.predict(inpt)
-			#out2 = self.net.single_predict(state.reshape(1,1,84,84))
+			#print out
 			a = out[0]
 		return a
 
@@ -66,19 +65,19 @@ class DQNAgent(object):
 		#for l in self.net.layers:
 		#	print l.params[0].get_value()
 
-		for epoch in range(1,6):
+		for epoch in range(1,11):
 			loss = self.net.train_net()
 			#print "Epoch: %i Loss: %f" % (epoch,loss)
 	def save(self):
 		f = file('save/net.save', 'wb')
 		for p in self.net.params:
-			cPickle.dump(p, f, protocol=cPickle.HIGHEST_PROTOCOL)
+			cPickle.dump(p.get_value(), f, protocol=cPickle.HIGHEST_PROTOCOL)
 		f.close()
 	
 	def load(self):
 		f = file('save/net.save', 'rb')
-		for i in range(self.net.params):
-			self.net.params[i] = cPickle.load(f)
+		for i in range(len(self.net.params)):
+			self.net.params[i].set_value(cPickle.load(f))
 		f.close()
 	
 	def train(self):
@@ -86,7 +85,7 @@ class DQNAgent(object):
 		total_rewards = 0.
 
         	for i in xrange(episodes):
-                	p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+                	p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-frame_skip", "3", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE, stderr=PIPE)
                 	line = p.stdout.readline()
                 	w,h = map(int, line.split("-"))
                 	p.stdin.write("1,0,0,1\n")#screen and episode information
@@ -129,9 +128,10 @@ class DQNAgent(object):
 		print "Average Total Rewards: %f" % (total_rewards / episodes)
 
 	def play(self):
+		self.load()
 		self.epsilon = 0.05
 		for i in xrange(episodes):
-                	p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+                	p = Popen([ale + "ale", "-game_controller", "fifo", "-display_screen", "true", "-frame_skip", "3", "-run_length_encoding", "false", ale + "roms/" + rom], stdin=PIPE, stdout=PIPE, stderr=PIPE)
                 	line = p.stdout.readline()
                 	w,h = map(int, line.split("-"))
                 	p.stdin.write("1,0,0,1\n")#screen and episode information
