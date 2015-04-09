@@ -69,13 +69,13 @@ class DQNAgent(object):
 			loss = self.net.train_net()
 			#print "Epoch: %i Loss: %f" % (epoch,loss)
 	def save(self):
-		f = file('save/net.save', 'wb')
+		f = file(os.path.realpath('.') + '/atari/rnn-agent/save/net.save', 'wb')
 		for p in self.net.params:
 			cPickle.dump(p.get_value(), f, protocol=cPickle.HIGHEST_PROTOCOL)
 		f.close()
 	
 	def load(self):
-		f = file('save/net.save', 'rb')
+		f = file(os.path.realpath('.') + '/atari/rnn-agent/save/net.save', 'rb')
 		for i in range(len(self.net.params)):
 			self.net.params[i].set_value(cPickle.load(f))
 		f.close()

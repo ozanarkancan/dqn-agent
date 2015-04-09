@@ -26,7 +26,7 @@ class LogisticRegression(object):
 		self.params = [self.W, self.b]
 	
 	def negative_log_likelihood(self, y):
-		return -T.mean(T.log(self.p_y_given_x)[T.arange(y.shape[0]), y])
+		return -T.mean(T.log(self.p_y_given_x + 1e-8)[T.arange(y.shape[0]), y])
 	
 	def errors(self, y):
 		return T.mean(T.neq(self.y_pred, y))
